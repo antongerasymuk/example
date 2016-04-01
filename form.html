@@ -1,0 +1,1149 @@
+<form action="{$GB->conf['url']['admin']}/{$O['this']->_name}/update/" method="post" onsubmit="return checkProductsEdition()" enctype="multipart/form-data">
+{$GB->html->hidden('id', $O['id'])}
+{$GB->html->hidden('coupon', $O['info']['coupon']['code'])}
+{$GB->html->hidden('cost_coupons', $O['info']['cost_coupons'])}
+<table width="100%" class="tcontainer"><tr valign="top">
+
+<td width="55%" style="padding-right:10px;">
+    <fieldset id="i-order">
+    <legend>Заказ: <img src="{$surl}/admin/img/type-{$O['info']['shop']['type']}.png" alt="{$O['info']['shop']['type']}" align="absmiddle" style="margin:0 4px;"/><strong>{if $O['hasEmbroidery']}<span style="color:red;">{$O['info']['code']}</span>{else}{$O['info']['code']}{/if}</strong></legend>
+    <table class="form" width="100%">
+    {if $O['info']['shop']['type'] == 'shop'}
+    <tr>
+        <td class="label">Магазин:</td>
+        <td class="field">
+		<img src="{$surl}/admin/img/currency_{$GB->getFrontendCurrency($O['info']['shop'])}.png" /> <a href="#" onclick="dialogShop('{$O['info']['id_shops']}');return false;"><b>{$O['info']['shops_code']}</b> / &laquo;{H $O['info']['shop']['name']}&raquo;</a></td>
+    </tr>
+    {else}
+    <tr>
+        <td class="label">Пользователь:</td>
+        <td class="field"><a href="#" onclick="dialogShop('{$O['info']['id_shops']}');return false;"><b>{$O['info']['shops_code']}</b> / {H $O['info']['shop']['c_fullname']}</a></td>
+    </tr>
+    {/if}
+	<tr>
+		<td class="label">Офис:</td>
+		<td class="field">{$GB->html->select($O['this']->ad->a_office, 'office', $O['info']['office'])}</td>
+	</tr>
+    <tr class="noprint">
+        <td class="label">Статус:</td>
+        <td class="field" style="font-size:0.9em;font-weight:bold;">
+            {$O['info']['status_name']}
+            <a href="#" onclick="$('#block-flags').css('display', 'table-row-group');">&raquo;</a>
+        </td>
+    </tr>
+    
+    <tbody class="noprint" id="block-flags" style="background:#F3F3F3;{if !$O['info']['flags']}display:none;{/if}">
+        {if ($O['info']['flags'])}
+            {foreach from="O['info']['flags']" value="flag"}
+                <tr class="noprint {if !last} flag-history{/if}">
+                    <td class="label">Установлен:</td>
+                    <td class="field">{datetime $flag[flag_dt]}</td>
+                </tr>
+                <tr class="noprint {if !last} flag-history{/if}">
+                    <td class="label">Кем:</td>
+                    <td class="field">{$flag['admin']}</td>
+                </tr>
+                <tr class="noprint {if !last} flag-history{/if}">
+                    <td class="label">Флаг:</td>
+                    <td class="field">{$O['this']->ad_flags->a_flag_out[$flag['type']]}</td>
+                </tr>
+                <tr class="noprint {if !last} flag-history{/if}" style="border-bottom: 5px solid #FFF;">
+                    <td class="label">Заметки:</td>
+                    <td class="field">{$flag['notes']}</td>
+                </tr>
+            {/foreach}
+        {/if}
+        <tr class="noprint" >
+            <td class="label">Флаг:</td>
+            <td class="field">{$GB->html->select(array(''=>'')+$O['this']->ad_flags->a_flag_out, 'flag', 0 , true, 'style="width:95%;"')}</td>
+        </tr>
+        <tr class="noprint">
+            <td class="label">Заметки:</td>
+            <td class="field">{$GB->html->textarea('flag_notes', '' , 'style="height:43px;" maxlength="255"')}</td>
+        </tr>
+        <tr class="noprint">
+                <td class="label"></td>
+                <td class="field">
+                    <input type="button" onclick="$('#block-flags').css('display', 'none');" value="Скрыть Флаги">
+                    <input type="button" id="flag-history-btn" value="История">
+                </td>
+        </tr>
+    </tbody>
+
+    <tr class="noprint">
+        <td class="label">Дата заказа:</td>
+        <td class="field">{datetime $O['info']['c_dt']}</td>
+    </tr>
+    <tr class="noprint">
+        <td class="label">Дата статуса:</td>
+        <td class="field">{datetime $O['info']['status_dt']}</td>
+    </tr>
+    <tr>
+        <td class="label">Дата отправки:</td>
+        <td class="field">
+            <table cellpadding="0" cellspacing="0"><tr>
+                <td style="padding:0">{$GB->html->text('delivery_dt', $O['info']['delivery_dt'], 'id="delivery_dt" style="width:110px;"')}</td>
+                <td style="padding:0;padding-left:5px;"><div tx:type="calendar" id="delivery_dt_button" /></td>
+            </tr></table>
+        </td>
+    </tr>
+    
+    {php}
+    $ad = $GB->ad('ShopsDeliveries');
+    $deliveries = $ad->getAssoc(array('id_shops' => $O['info']['id_shops']));
+    {/php}
+    <tr>
+        <td class="label print-large">Доставка:</td>
+        <td class="field">{$GB->html->select($O['deliveries'], 'id_deliveries', $O['info']['id_deliveries'], true, 'class="print-large" style="width:95%;"')} {if !isset($deliveries['1'])}<span style="border:1px solid red;background:red;" title="Самовывоз - НЕДОСТУПЕН!">&nbsp;</span>{/if}</td>
+    </tr>
+	{if $O['info']['postpay']}
+	<tr>
+		<td class="label">Тип доставки:</td>
+		<td class="field"><strong style="color:red">Постоплата</strong></td>
+	</tr>
+	{/if}
+    <tr>
+        <td class="label">Сервисы:</td>
+        <td class="field">
+        {set name="s_products_photos" value=false}
+        {foreach from="O['info']['products']" value="row"}
+        {if ($row['photos_status'] == 'do' && ($O['info']['shop']['balance'] > $O['price_photos']))}
+            {set name="s_products_photos" value=true}
+        {/if}
+        {/foreach}
+        {if $s_products_photos}<img src="{$surl}/admin/img/camera-do.gif" title="сделать фото!" style="vertical-align:absmiddle;margin-right:10px;" />{/if}
+        
+        {foreach from="O['this']->ad->a_services" key="s" value="s_name"}
+        {$GB->html->checkbox('services[]', $s, in_array($s, $O['info']['services']), 'id="s_'.$s.'"')} 
+        {if $O['info']['shop'][$s.'_file']}<a href="{$GB->conf['url']['admin']}/shops/identity/?id={$O['info']['shop']['id']}&type={$s}" style="margin-right:4px;{if in_array($s, $O['info']['services'])}font-weight:bold;color:#900;{/if}">{$s_name}</a>{else}{$s_name}{/if}
+        {/foreach}
+        </td>
+    </tr>
+    <tr>
+        <td class="label">Цена товаров:</td>
+        <td class="field">{$GB->html->hidden('cost_products', $O['info']['cost_products'], 'style="width:80px;text-align:right" id="cost_products"')} 
+        <b><span id="cost_products_val">{$O['info']['cost_products']}</span> {$GB->conf['currency']} </b>
+        </td>
+    </tr>
+    <tr>
+        <td class="label">Цена доставки:</td>
+        <td class="field">{$GB->html->text('cost_delivery', $O['info']['cost_delivery'], 'style="width:80px;text-align:right" id="cost_delivery" onfocus="checkProductsEdition(this.id)"')} {$GB->conf['currency']}</td>
+    </tr>
+    <tr>
+        <td class="label">Цена сервисов:</td>
+        <td class="field">{$GB->html->text('cost_services', $O['info']['cost_services'], 'style="width:80px;text-align:right" id="cost_services" onfocus="checkProductsEdition(this.id)"')} {$GB->conf['currency']}</td>
+    </tr>
+    <tr>
+        <td class="label">К оплате:</td>
+        <td class="field">
+            <b><span id="cell_total">0.00</span> {$GB->conf['currency']} (<span id="cell_total_uah">0.00</span> грн.)</b>
+        </td>
+    </tr>
+	<tr>
+        <td class="label">К оплате в валюте магазина (товары + доставка):</td>
+        <td class="field">
+            <b><span id="cell_total_frontend">0.00</span> {if $O['info']['currency']}{$O['info']['currency']}{else}{$GB->getFrontendCurrency($O['info']['shop'])}{/if}</b>
+			<input type="hidden" name="frontend_currency_rate" id="frontend_currency_rate" value="{$O['info']['frontend_currency_rate']}" />
+        </td>
+    </tr>
+    <tr>
+        <td class="label">Админ-заметки:</td>
+        <td class="field{if $O['info']['notes_admin']} attent{/if}">{$GB->html->textarea('notes_admin', $O['info']['notes_admin'], 'style="height:28px;" maxlength="255"')}</td>
+    </tr>
+    <tr>
+        <td align="right">Метод Оплаты:</td>
+        <td>
+            {$GB->html->select(array(''=>'')+$O['paybox'], 'payment', $O['info']['payment'], true)}
+        </td>
+    </tr>
+    </table>
+    </fieldset>
+    <script type="text/javascript">
+    //<![CDATA[
+    Calendar.setup({
+            inputField    : "delivery_dt",
+            button        : "delivery_dt_button",
+            showsTime     : false,
+            ifFormat      : '%Y-%m-%d'
+    });
+    //]]>
+    </script>
+</td>
+
+<td width="43%">
+    <fieldset id="i-customer">
+    <legend>Информация о заказчике &nbsp;&nbsp; <a href="#" onclick="$('#f-view').hide();$('#f-edit').show();$(this).hide()">редактировать</a></legend>
+    <div align="right">
+        <a href="{$GB->conf['url']['admin']}/{$O['this']->_name}/postal_forms/sng/?id={$O['id']}"><img src="{$surl}/admin/img/icon_sng.jpg" /></a>
+        <a href="{$GB->conf['url']['admin']}/{$O['this']->_name}/postal_forms/ukr/?id={$O['id']}"><img src="{$surl}/admin/img/icon_ukr.jpg" /></a>
+        <a href="{$GB->conf['url']['admin']}/{$O['this']->_name}/postal_forms/wrd/?id={$O['id']}"><img src="{$surl}/admin/img/icon_world.jpg" /></a>
+    </div>
+    <table class="form" width="100%" id="f-edit" style="display:none;">
+    <tr>
+        <td class="label">Ф.И.О.:</td>
+        <td class="field">{$GB->html->text('fullname', $O['info']['fullname'])}</td>
+    </tr>
+    <tr>
+        <td class="label">E-mail:</td>
+        <td class="field">{$GB->html->text('email', $O['info']['email'])}</td>
+    </tr>
+    <tr>
+        <td class="label">Телефон:</td>
+        <td class="field">{$GB->html->text('phone', $O['info']['phone'])}</td>
+    </tr>
+{if $O['info']['shop_sender_id_status'] == 1}
+	<tr>
+        <td class="label">Sender ID:</td>
+        <td class="field">{$O['info']['shops_code']}</td>
+    </tr>
+{/if}
+    <tr>
+        <td class="label">Адрес:</td>
+        <td class="field">{$GB->html->text('c_address', $O['info']['c_address'])}</td>
+    </tr>
+    <tr>
+        <td class="label">Город:</td>
+        <td class="field">{$GB->html->text('c_city', $O['info']['c_city'])}</td>
+    </tr>
+    <tr>
+        <td class="label">Страна:</td>
+        <td class="field">{$GB->html->select($GB->conf['countries'], 'c_country', $O['info']['c_country'])}</td>
+    </tr>
+    <tr>
+        <td class="label">Индекс:</td>
+        <td class="field">{$GB->html->text('c_zip', $O['info']['c_zip'])}</td>
+    </tr>
+    <tr>
+        <td class="label">Заметки:</td>
+        <td class="field{if $O['info']['c_notes']} attent{/if}">{$GB->html->textarea('c_notes', $O['info']['c_notes'], 'style="height:44px;" maxlength="255"')}</td>
+    </tr>
+    </table>
+    <table class="form" width="100%" id="f-view">
+    <tr>
+        <td class="label">Ф.И.О.:</td>
+        <td class="field">{H $O['info']['fullname']}</td>
+    </tr>
+    <tr>
+        <td class="label">E-mail:</td>
+        <td class="field">{H $O['info']['email']}</td>
+    </tr>
+    <tr>
+        <td class="label">Телефон:</td>
+        <td class="field">{H $O['info']['phone']}</td>
+    </tr>
+{if $O['info']['shop_sender_id_status'] == 1}
+	<tr>
+        <td class="label">Sender ID:</td>
+        <td class="field">{$O['info']['shops_code']}</td>
+    </tr>
+{/if}
+    <tr>
+        <td class="label">Адрес:</td>
+        <td class="field">{H $O['info']['c_address']}</td>
+    </tr>
+    <tr>
+        <td class="label">Город:</td>
+        <td class="field">{H $O['info']['c_city']} {if $O['info']['timezone_offset']} ({if $O['info']['timezone_offset'] > 0}+{/if}{$O['info']['timezone_offset']}){/if}</td>
+    </tr>
+    <tr>
+        <td class="label">Страна:</td>
+        <td class="field">{H $GB->conf['countries'][$O['info']['c_country']]}</td>
+    </tr>
+    <tr>
+        <td class="label">Индекс:</td>
+        <td class="field">{H $O['info']['c_zip']}</td>
+    </tr>
+    <tr>
+        <td class="label" valign="top">Заметки:</td>
+        <td class="field"><div style="height:44px;overflow:auto;{if $O['info']['c_notes']}border:2px solid red;{/if}">{HN $O['info']['c_notes']}</div></td>
+    </tr>
+    <tr>
+        <td class="label" valign="top">Исполненные заказы:</td>
+        <td class="field">{$O['info']['complete_orders']}</td>
+    </tr>
+    {if $O['another_orders']}
+    <tr class="another_orders">
+        <td class="label"><strong>Другие заказы:</strong></td>
+        <td class="field">
+	        <ul style="list-style:none;">
+	        {foreach from="O['another_orders']" value="row"}
+	        	<li><a href="javascript:dialogOrder({$row['id']})">{$row['code']}</a> ({$O['statuses'][$row['status']]})</li>
+	        {/foreach}
+	        </ul>
+        </td>
+    </tr>
+    {/if}
+    <tr>
+        <td class="label">IP адрес:</td>
+        <td class="field">{$O['info']['user_ip']}</td>
+    </tr>
+    <tr>
+        <td class="label">Пришёл с{if $O['info']['ref'] == 1 && $O['info']['referral']} referral - {$O['info']['referral']}{/if}:</td>
+        <td class="field" style="font-size:0.9em;">{if $O['info']['http_referer']}<a href="{H $O['info']['http_referer']}" target="_blank">{H substr($O['info']['http_referer'], 0, 45)}</a>{else}&mdash;{/if}</td>
+    </tr>
+    <tr>
+        <td class="label">Браузер:</td>
+        <td class="field" style="font-size:0.8em;">{if $O['info']['descr']}{$O['info']['descr']}{else}&mdash;{/if}</td>
+    </tr>
+	<tr>
+		<td class="label">&nbsp;</td>
+		<td class="field"><a href="http://{$O['info']['shop']['code']}.{$GB->conf['url']['shop_domain']}/payment/?oid={$O['info']['code']}" target="_blank">Перейти к оплате</a></td>
+	</tr>
+    </table>
+    </fieldset>
+    <div align="right" id="i-buttons">
+        <input type="button" value="Печатать" style="float:left" onclick="window.print();" />
+        <input type="button" value="Декларация" style="float:left"  onclick="getRussiaPostForms();"/>
+        <input type="submit" value="Обновить" style="font-weight:bold" />
+    </div>
+</td>
+
+</tr></table>
+
+
+<fieldset id="i-products">
+    <legend>Товары / <strong>{$O['info']['num_products']} шт.</strong></legend>
+    {if $O['is_editable']}
+    <div align="right" style="padding-right:5px;"><input type="button" id="edit-btn" value="Редактировать" style="font-size:9px;" /></div>
+    {/if}
+    <table class="list" width="100%">
+    <thead>
+    <tr>
+		<td width="32%">Название</td>
+		<td width="8%">Размер</td>
+		<td width="16%">Скидка</td>
+		<td width="12%">Цена</td>
+		<td width="12%">Кол.</td>
+		<td width="10%">Итого</td>
+		<td width="10%" class="last">Royalty</td>
+    </tr>
+    </thead>
+    <tbody class="rows">
+    {foreach from="O['info']['products']" value="row"}
+    {set name="photo_do" value=($row['photos_status'] == 'do' && ($O['info']['shop']['balance'] > $O['price_photos']))}
+    <tr>
+        <td{if $photo_do} style="background:#FDD;"{/if}>
+        	{if $photo_do}<a href="#" style="float:left;margin-right:3px;" onclick="dialogProductPhotos('{$row['id_products']}')"><img src="{$surl}/admin/img/camera-do.gif" title="сделать фото!" /></a>{/if}
+            <a href="#" onclick="dialogProduct('{$row['id_products']}');return false;"><strong>{$row['id_products']}</strong> / {$row['product_name']}</a>
+            <div style="font-size:0.9em;">{$row['base_name']}</div>
+        </td>
+        <td align="center" class="print-attent">{$row['size']}</td>
+		{if $row['discount_sum']}
+		<td align="center">{numberFormat $row['discount_sum']}({numberRound ($row['discount_sum']/$row['price'])*100}%)</td>
+		{else}
+		<td align="center">-</td>
+		{/if}</td>
+        <td align="center">{numberFormat $row['price']}</td>
+        <td align="center" class="print-attent"><span style="padding:2px 5px;{if $row['qty'] > 1}border:2px dotted red;background:#fdd;{/if}">{$row['qty']}</span></td>
+        <td align="right">{numberFormat $row['qty']*($row['price']-$row['discount_sum'])}</td>
+        <td align="right" class="last">{numberFormat $row['qty']*$row['royalty']}</td>
+    </tr>
+    {/foreach}
+    </tbody>
+    </table>
+</fieldset>
+</form>
+
+{if $O['is_editable']}
+<fieldset id="edit-products" style="display:none;">
+    <legend>Редактирование / <a href="javascript:addItem();">добавить товар</a></legend>
+    <form action="{$GB->conf['url']['admin']}/{$O['this']->_name}/change/" method="post">
+        {$GB->html->hidden('id', $O['id'])}
+	    <table class="list" id="table_products" width="100%">
+	    <thead>
+		    <tr>
+				<td width="10%">ID</td>
+				<td width="10%">Размер</td>
+				<td width="14%">Тип скидки</td>
+				<td width="14%">Знач. скидки</td>
+				<td width="14%">Сумма скидки</td>
+				<td width="14%">Цена за товар</td>
+				<td width="7%">Кол.</td>
+				<td width="7%">Итого</td>
+				<td width="5%">&nbsp;</td>
+				<td width="5%" class="last">&nbsp;</td>
+		    </tr>
+	    </thead>
+	    <tbody id="items">
+	    </tbody>
+	    </table>
+	    <div align="right" style="padding:5px;"><input type="submit" value="Сохранить"  /></div>
+    </form>
+</fieldset>
+{/if}
+
+<table width="100%" class="tcontainer"><tr valign="top">
+
+<td width="55%" style="padding-right:10px;">
+    <fieldset id="i-payments">
+    <legend>Заявки на оплату</legend>
+    <table class="list" width="100%" style="font-size:0.9em;">
+    <tbody class="rows">
+    {foreach from="O['info']['payments']" value="row"}
+    <tr onmousedown="">
+        <td width="20%" align="center">{datetime $row['date']}</td>
+        <td width="60%">{$row['moduleNameFull']}</td>
+        <td width="20%" align="right" class="last">{$row['localSum']}</td>
+    </tr>
+    {/foreach}
+    </tbody>
+    </table>
+    </fieldset>
+</td>
+
+<td width="43%">
+    <fieldset id="i-coupons">
+    {set name="coupon" value=$O['info']['coupon']}
+    <legend>Купон{if $coupon}: <b>{$coupon['code']}</b>{/if}</legend>
+    {if $coupon}
+        <table class="form" width="100%">
+        <tr>
+            <td class="label">Создан:</td>
+            <td class="field">{datetime $coupon['c_dt']}</td>
+        </tr>
+        <tr>
+            <td class="label">Сумма:</td>
+            <td class="field">{numberFormat $coupon['value']} {$O['this']->ad_coupons->a_type[$coupon['type']]}</td>
+        </tr>
+        <tr>
+            <td class="label">Чей:</td>
+            <td class="field">{if $coupon['id_shops']}<a href="#" onclick="dialogShop('{$coupon['id_shops']}')">{$coupon['shop_code']}</a>{else}<em>универсальный</em>{/if}</td>
+        </tr>
+        <tr>
+            <td colspan="2">
+                <form method="POST">
+                    {$GB->html->hidden('id', $O['id'])}
+                    <input type="submit" value="Отменить" name="coupon_del_submit" />
+                </form>
+            </td>
+        </tr>
+        {if $coupon['notes']}
+        <tr>
+            <td class="label">Заметки:</td>
+            <td class="field">{$coupon['notes']}</td>
+        </tr>
+        {/if}
+        </table>
+    {else}
+        <!--<div style="text-align:center;color:#999;">При заказе купон не использовался</div>-->
+        <div style="text-align:left;color:#999;">
+            <form  method="POST">
+                <input  type="text" name="coupon" id="coupon" value="" /><br>
+                <input  type="submit" value="Применить" name="coupon_submit" id="coupon_submit" />
+            </form>
+        </div>
+    {/if}
+            <fieldset>
+            <legend class="no-print">Доступные купоны ({count $O['info']['allowedCouponsPp']}+{count $O['info']['allowedCouponsPartners']})</legend>
+            <table class="form no-print" width="100%">
+                    <td colspan="2">
+                        <input type="button" id="toggle-coupons-list" value="Показать">
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="2" class="field">
+                        <div class="coupons-list" style="display: none;">
+                            <!-- Coupons List -->
+                            <br>
+                            <hr>
+                            <legend>Купоны партнера</legend>
+                                <table>
+                                    <tbody>
+                                    {if $O['info']['allowedCouponsPartners']}
+                                        {foreach from=O['info']['allowedCouponsPartners'] value="coupon"}
+                                        <tr>
+                                            <td> {$coupon['code']} </td>
+                                            <td> {$coupon['value']} </td>
+                                        </tr>
+                                        {/foreach}
+                                    {else}
+                                    <tr><td>нет</td></tr>
+                                    {/if}
+                                    </tbody>
+                                </table>
+                            <hr>
+                            <legend>Купоны ПП</legend>
+                                <table>
+                                    <tbody>
+                                    {if $O['info']['allowedCouponsPp']}
+                                        {foreach from=O['info']['allowedCouponsPp'] value="coupon"}
+                                        <tr>
+                                            <td> {$coupon['code']} </td>
+                                            <td> {$coupon['value']} </td>
+                                        </tr>
+                                        {/foreach}
+                                    {else}
+                                    <tr><td>нет</td></tr>
+                                    {/if}
+                                    </tbody>
+                                </table>
+                                <!-- Coupons List -->
+                            <div style="clear: both"></div>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </fieldset>
+    </fieldset>
+</td>
+
+</tr>
+</table>
+
+
+<style type="text/css">
+a.switch {
+    font-weight: bold;
+}
+a.switch_active {
+    color: #000;
+}
+
+.error {
+	border-color: #B00000;
+	box-shadow: inset 0 1px 3px rgba(0,0,0,.05),0 0 8px;
+}
+
+@media print {
+	.no-print, .no-print * {
+		display: none !important;
+	}
+}
+</style>
+<fieldset id="i-statuses">
+    <legend>История статусов и писем</legend>
+    
+    <form method="post" action="{$GB->conf['url']['admin']}/orders/move/" onsubmit="return statusValidate();">
+    {$GB->html->hidden('id', $O['id'])}
+    <table width="100%" class="form">
+    <tr>
+        <td width="20%" class="label">Новый статус:</td>
+        <td width="70%">
+        	{$GB->html->select($O['statuses'], 'status', $O['info']['status'], true, 'id="new_status" data-postpay="'.$O['info']['postpay'].'"')}
+        </td>
+        <td width="10%" rowspan="2" align="right"><input type="submit" value="OK" /></td>
+    </tr>
+    <tr>
+        <td align="right">Примечания:</td>
+        <td>{$GB->html->text('notes')}</td>
+    </tr>
+    
+    <tr class="reason">
+        <td align="right">Причина:</td>
+        <td>
+        {foreach from=O['statuses_reasons'] key="key" value="row"}
+		{if $row}
+	        {if $O['info']['status'] == $key}
+	        	{$GB->html->select(array('' => '-') + $row, 'status_reason', $O['info']['status_reason'], true, 'data-status="st-'.$key.'"')}
+	        {else}
+	        	{$GB->html->select(array('' => '') + $row, 'status_reason', $O['info']['status_reason'], true, 'data-status="st-'.$key.'" disabled="" style="display:none;"')}
+	        {/if}
+        {/if}
+		{/foreach}
+		</td>
+    </tr>
+    
+	{if $O['info']['postpay']}
+	<tr class="delivery_postpay"{if ($O['info']['status'] !== 'ready_courier_waitpay') && ($O['info']['status'] !== 'ready_post_waitpay')} style="visibility:hidden"{/if}>
+		<td class="label">Доставка:</td>
+		<td class="field">{$GB->html->text('delivery_postpay', $O['info']['delivery_postpay'], 'style="width:70px; text-align:right"')} грн.</td>
+	</tr>
+	{/if}
+    <tr id="srow_conf_pay_preorder" style="display:none;">
+        <td align="right">Метод:</td>
+        <td>
+            {$GB->html->select($O['paybox'], 'spec_pay_method', $O['status_data'], true, 'style="width:300px;"')}
+            <span style="padding-left:10px;">Сумма: {$GB->html->text('spec_pay_sum', '0.00', 'style="width:60px;text-align:right;"')}</span>
+        </td>
+    </tr>
+    <tr id="srow_wait_base" style="display:none;">
+        <td align="right">Дата:</td>
+        <td>
+            {$GB->html->text('spec_wait_base', date('Y-m-d'), 'style="width:80px;text-align:center;" id="spec_wait_base"')}
+            <img src="{$surl}/calendar/bCalendar.gif" id="b_spec_wait_base" align="absmiddle" style="cursor:pointer" />
+        </td>
+    </tr>
+    <tr id="srow_no_call_for" style="display:none;">
+        <td align="right">Пенальти:</td>
+        <td>
+            {$GB->html->text('spec_no_call_for', $O['info']['spec_no_call_for'], 'style="width:80px;text-align:right;" id="spec_no_call_for"')} {$GB->conf['currency']}&nbsp;
+            {$GB->html->checkbox('is_unscrupulous', 1, $O['info']['is_unscrupulous'] == 1, 'id="is_unscrupulous"')} <label for="is_unscrupulous">недобросовестный</label>
+        </td>
+    </tr>
+    <tr>
+    	<td>
+	    	{$GB->html->hidden('email', $O['info']['email'])}
+    	</td>
+    </tr>
+    </table>
+    </form>
+
+    <table class="list" width="100%">
+    <thead>
+        <tr>
+            <td width="20%">Дата</td>
+            <td width="80%">
+                <a href="javascript:switchType('all')" class="switch" id="switch_all">все</a>
+                 | 
+                <a href="javascript:switchType('status')" class="switch" id="switch_status">статусы</a>
+                 | 
+                <a href="javascript:switchType('msg')" class="switch" id="switch_msg">сообщения</a>
+            	| 
+                <a href="javascript:switchType('sms')" class="switch" id="switch_sms">смс</a>
+            </td>
+        </tr>
+    </thead>
+    <tbody id="history" class="rows">
+    {foreach from="O['info']['history']" value="row"}
+    {if $row['row_type'] == 'status'}
+        {set name="i" value=2}
+    {else}
+        {set name="i" value=1}
+    {/if}
+    <tr rel="{$row['row_type']}" class="row{$i}">
+        <td align="center">{datetime $row['order_dt']}</td>
+        <td>
+        {if $row['row_type'] == 'status'}
+            <div>Статус: <strong>{$row['status_name']}</strong></div>
+            <div>
+                <span>Админ: {$row['admin']}</span>
+                <span style="padding-left:20px; color:#666;">{if $row['data']}Данные: {$row['data']}{/if}</span>
+            </div>
+            {if $row['status_reason']}
+                <div>Причина: {$O['statuses_reasons'][$row['status']][$row['status_reason']]}</div>
+            {/if}
+            {if $row['notes']}
+                <div style="font-style:italic;">{$row['notes']}</div>
+            {/if}
+			{if $row['delivery_postpay']}
+				<div style="font-style:italic;">Доставка: {$row['delivery_postpay']} грн.</div>
+			{/if}
+        {elseif $row['row_type'] == 'msg'}
+            <div>Письмо: <strong>{$row['mailtpl_name']}</strong></div>
+            <div>{$O['this']->ad_messages->a_type[$row['type']]}: {$row['emails']}</div>
+
+        {elseif $row['row_type'] == 'sms'}
+        	<div>СМС: <strong>{$row['title']}</strong></div>
+            <div>Статус: 
+            	{if $row['error']}
+                	{$row['error']}
+                {elseif $row['status'] == '1'}
+                	Доставлено
+                {else}
+                	Недоставлено
+                {/if}
+            </div>
+        {/if}
+        </td>
+    </tr>
+    {/foreach}
+    <tr>
+        <td align="center"><span>Выбраный оператор оплаты: </span></td>
+        <td>{if $O['info']['payment']}
+            <div>{$O['info']['payment']}</div>
+            {/if}
+        </td>
+    </tr>
+    </tbody>
+    </table>
+</fieldset>
+
+<script type="text/javascript">
+//<![CDATA[
+
+var frontend_currency_rate, cell_total, cell_total_cur,  cell_total_frontend;
+var UAH = '{$O['currency']['грн.']}';
+var currency = "{$O['info']['currency']}";
+var itemIndex = 1;
+var hasCoupon = false;
+var deliveries_prices = new Array();
+{foreach from=O['info']['deliveries_prices'] key="key" value="row"}
+deliveries_prices['{$key}'] = "{$row}";
+{/foreach}
+
+{if $O['info']['coupon']['code']}
+	hasCoupon = true;
+{/if}
+
+var spec_rows = ['wait_base', 'conf_pay_preorder', 'no_call_for'];
+
+{if $O['info']['postpay']}
+	var delivery_postpay = {$O['info']['delivery_postpay']};
+{/if}
+
+
+Calendar.setup({
+	inputField    : "spec_wait_base",
+	button        : "b_spec_wait_base",
+	showsTime     : false,
+	ifFormat      : '%Y-%m-%d'
+});
+
+jQuery(function($) {
+	frontend_currency_rate = document.getElementById('frontend_currency_rate').value;
+	cell_total = $('#cell_total');
+	cell_total_cur = $('#cell_total_cur');
+	cell_total_uah = $('#cell_total_uah');
+	cell_total_frontend = $('#cell_total_frontend');
+
+	$('#edit-btn').click(function() {
+		$('#i-products').hide();
+		$('#edit-products').show();
+		$("#cost_delivery").attr('readonly', true);
+		$("#cost_services").attr('readonly', true);
+	});
+	$('.flag-history').css('display','none');
+
+	// onchange status
+	$('select[name=status]').change(function () {
+		status = this.value;
+		status_null_fix = 'st-'+status;
+		postpay = $(this).data('postpay');
+		postpay_block = $('.delivery_postpay');
+
+		checkSpecFields();
+		reasonBuild(status_null_fix);
+
+		// postpay
+		if (postpay) {
+			if (status == 'ready_courier_waitpay' || status == 'ready_post_waitpay') {
+				postpay_block.css('visibility', 'visible')
+						.find('td.field')
+						.html($('<input>', {'type': 'text', 'name': 'delivery_postpay', 'value': delivery_postpay})
+								.css({'width': '70px', 'text-align': 'right'})
+						).append(' грн.');
+			} else {
+				postpay_block.css('visibility', 'hidden')
+						.find('td.field')
+						.empty();
+			}
+		}
+	});
+
+	{foreach from="O['info']['products']" value="row"}
+		{if $row['discount_sum']}
+			$("#coupon").attr('disabled', true);
+			$("#coupon_submit").attr('disabled', true);
+			$("#coupon").val("Применен дисконт!");
+			{set name="discount_sum" value=$row['discount_sum']}
+		{else}
+			{set name="discount_sum" value=0}
+		{/if}
+		addItem('{$row['id_products']}','{$row['size']}', '{$row['price']}', '{$row['qty']}', '{$discount_sum}');
+	{/foreach}
+
+	switchType('all');
+	reasonBuild('st-{$O['info']['status']}');
+	setInterval('watchTotal()', 500);
+
+	$("#coupon").change(function() {
+		disableDiscountAccess();
+	});
+
+	$('select[name="id_deliveries"]').change(function() {
+		$("#cost_delivery").val(deliveries_prices[$(this).val()]);
+		//editProductOrder($(this));
+	});
+
+	$("#items .discount").change(function() {
+		editProductOrder($(this));
+	});
+});
+
+function watchTotal()
+{
+    var d_total = 0;
+    var d_coupon = 0;
+    d_total += $('#cost_products')[0].value*1;
+    d_total += $('#cost_delivery')[0].value*1;
+	var s;
+	var d_coupon = {$O['info']['cost_coupons']};
+    d_coupon = Math.round(d_coupon*100)/100;
+
+	if (d_coupon < d_total) {
+		d_total = d_total - d_coupon;
+	} else {
+		d_total = 0;
+	}
+
+	if (parseInt(d_total) != d_total) {
+		s = d_total.toFixed(2);
+	} else {
+		s = d_total;
+	}
+
+	{if $coupon}s += ' (купон '+d_coupon+')';{/if}
+	cell_total.html(s);
+
+	// Calculate & set frontend total value
+	var sFrontend = Math.round(100*(d_total * frontend_currency_rate))/100;
+	if (currency == 'грн.' || currency == 'руб.') {
+		sFrontend = Math.round(sFrontend);
+	}
+	cell_total_frontend.html(sFrontend);
+	
+	// Calculate UAH currency
+	var sUAH = Math.round(Math.round(100*(d_total * UAH))/100);
+	cell_total_uah.html(sUAH);
+}
+
+function switchType(sType) {
+    $('#switch_all').attr('class', 'switch');
+    $('#switch_status').attr('class', 'switch');
+    $('#switch_msg').attr('class', 'switch');
+	$('#switch_sms').attr('class', 'switch');
+    $('#switch_'+sType).attr('class', 'switch_active');
+    
+    $('#history').find('tr').each(function() {
+        if (sType == 'all') {
+            $(this).show();
+        } else {
+            if ($(this).attr('rel') == sType) {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        }
+    });
+}
+
+function checkSpecFields()
+{
+    for(i=0; i<spec_rows.length; i++) {
+        $('#srow_'+spec_rows[i]).hide();
+    }
+
+    var selectedStatus = $('#new_status').get(0).value;
+    $('#srow_'+selectedStatus).show();
+
+    $('#is_unscrupulous').change();
+    
+}
+
+function checkProductsEdition(check_id) {
+	if ($('#edit-products').is(':visible')) {
+		window.alert("Открыто редактирование товаров!");
+		if (check_id != undefined) {
+			$("#"+check_id).blur();
+		}
+		return false;
+	}
+	return true;
+}
+// Edit order functions
+
+function addItem(id, size, price, qty, discount_sum) {
+
+	if (id == undefined) {
+		id = '';
+		size = '';
+		discount_sum = 0;
+		price = 0;
+		qty = 1;
+	}
+
+	index = itemIndex;
+	namePrefix = 'products['+itemIndex+']';
+	idPrefix   = 'row_'+itemIndex;
+	var elRow = $('<tr data-index="'+itemIndex+'"></tr>').attr('id', idPrefix).appendTo('#items');
+
+	// id
+	$('<input type="text" />')
+			.attr({'name': namePrefix+'[id]', 'value': id, 'id': idPrefix+'_product'})
+			.appendTo($('<td/>').appendTo(elRow));
+
+	// size
+	$('<input type="text" style="text-align:center;" />')
+			.attr({'name': namePrefix+'[size]', 'value': size})
+			.appendTo($('<td/>').appendTo(elRow));
+
+	if (id == '') {
+			$('<input type="hidden"/>').attr({'name': namePrefix+'[discount_sum]', 'id': idPrefix+'[discount_sum]', 'value': 0}).appendTo(elRow);
+			$('<div style="text-align:center;" ></div>').appendTo($('<td colspan="3"/>').appendTo(elRow));
+	} else {
+		if (!hasCoupon) {
+			$('<select class="discount"><option value="unit">еденицы</option><option value="percent">проценты</option></select>')
+					.attr({'id': idPrefix+'[select_type]', 'data-index':itemIndex, 'data-price':price})
+					.appendTo($('<td/>').appendTo(elRow));
+
+			$('<span><input type="text"  class="discount" data-index="'+itemIndex+'" data-price="'+price+'" required pattern="\\d+(\\.|\\,)?\\d*" title="Введите скидку правильно!" style="text-align:right; width:75%;" id="'+idPrefix+'[discount]" value="'+(parseFloat(discount_sum).toFixed(2))+'" /><i id="'+idPrefix+'[discount_i]"></i></span>')
+					.attr({'id': idPrefix+'[discount_span]'})
+					.appendTo($('<td/>').appendTo(elRow));
+
+			$('<div style="text-align:center;" >'.concat(parseFloat(discount_sum).toFixed(2)).concat("</div>"))
+					.attr({'id': idPrefix+'[discount_sum_text]'})
+					.appendTo($('<td/>').appendTo(elRow));
+			$('<input type="hidden"/>').attr({'name': namePrefix+'[discount_sum]', 'id': idPrefix+'[discount_sum]', 'value': discount_sum}).appendTo(elRow);
+		} else {
+			$('<input type="hidden"/>').attr({'name': namePrefix+'[discount_sum]', 'id': idPrefix+'[discount_sum]', 'value': 0}).appendTo(elRow);
+			if (index == 1) {
+				$('<div style="text-align:center;" >Уже применен купон!</div>').appendTo($('<td colspan="3"/>').appendTo(elRow));
+			} else {
+				$('<div style="text-align:center;" ></div>').appendTo($('<td colspan="3"/>').appendTo(elRow));
+			}
+		}
+	}
+	$('<div style="text-align:center;" >'.concat(parseFloat(price-discount_sum).toFixed(2)).concat("</div>"))
+			.attr({'name': namePrefix+'[product_price]', 'id': idPrefix+'[product_price]'})
+			.appendTo($('<td/>').appendTo(elRow));
+
+	// qty
+	$('<input type="text"  class="discount" style="text-align:right;" required  />')
+			.attr({'name': namePrefix+'[qty]', 'id': idPrefix+'[qty]', 'data-price':price, 'data-index':itemIndex, 'value': qty, pattern:'^[0-9]+$', title:'Заполняйте поле только целыми числами'})
+			.appendTo($('<td/>').appendTo(elRow));
+
+	$('<div style="text-align:center;" >'.concat(parseFloat((price-discount_sum)*qty).toFixed(2)).concat("</div>"))
+			.attr({'name': namePrefix+'[product_sum]', 'id': idPrefix+'[product_sum]'})
+			.appendTo($('<td/>').appendTo(elRow));
+
+	// edit
+	$('<a><img src="{$surl}/admin/img/item_edit_active.gif" align="absmiddle" /></a>')
+			.attr('href', 'javascript:editProduct("'+idPrefix+'")')
+			.css('margin-left', '3px')
+			.appendTo($('<td/>').css("text-align", "center").appendTo(elRow));
+
+	// delete
+	$('<a><img src="{$surl}/admin/img/item_delete_active.gif" align="absmiddle" /></a>')
+			.attr('href', 'javascript:delItem("'+idPrefix+'")')
+			.css('margin-left', '3px')
+			.appendTo($('<td/>').attr({'class': 'last'}).css("text-align", "center").appendTo(elRow));
+		var lastIndex = parseInt($("#items tr").last().attr('data-index'));
+		if (lastIndex) {
+			itemIndex = itemIndex + 1;
+		}
+}
+
+function disableDiscountAccess() {
+
+	var rows = $('#table_products').find("tr");
+	rows.each(function(index) {
+		$('input[id="row_'+index+'[discount]"]').attr('disabled', 'disabled');
+		$('select[id="row_'+index+'[select_type]"]').attr('disabled', 'disabled');
+	});
+}
+
+function editProductOrder(thisObj) {
+	var price = parseFloat(thisObj.attr('data-price'));
+	var index = parseInt(thisObj.attr('data-index'));
+	var currentRow = 'row_'+index;
+	var typedQty = parseInt($('input[id="' + currentRow + '[qty]"]').val());
+	var typedDiscount = $('input[id="' + currentRow + '[discount]"]').val();
+	var discountType = $('select[id="' + currentRow + '[select_type]"]').val();
+
+	if ((typedDiscount != undefined)&&(discountType != undefined))
+	{
+		$('input[id="' + currentRow + '[discount]"]').val($('input[id="' + currentRow + '[discount]"]').val().replace(',',"."));
+		var typedDiscount = parseFloat($('input[id="' + currentRow + '[discount]"]').val());
+	}
+
+	$("#coupon").prop('disabled', true);
+	$("#coupon_submit").prop('disabled', true);
+
+	var thisRow = thisObj.closest("tr");
+	var discountInput = thisRow.find('input[id="' + currentRow + '[discount]"]');
+	var qtyInput = thisRow.find('input[id="' + currentRow + '[qty]"]');
+
+	var isValidQty = (typedQty == parseInt(typedQty));
+	var isValidDiscount = validateDiscountValue(price, discountType, typedDiscount);
+
+	if (!isValidQty){
+		qtyInput.css({'border-color': '#B00000', 'box-shadow' : 'inset 0 1px 3px rgba(0,0,0,.05),0 0 8px' });
+	} else {
+		qtyInput.css({'border-color': '#B0B0B0', 'box-shadow' : '' });
+	}
+
+	if (!isValidDiscount){
+		discountInput.css({'border-color': '#B00000', 'box-shadow' : 'inset 0 1px 3px rgba(0,0,0,.05),0 0 8px' });
+	} else {
+		discountInput.css({'border-color': '#B0B0B0', 'box-shadow' : '' });
+	}
+
+	var isValid = validateRows();
+	var rows = $('#items').find("tr");
+
+	$("#edit-products input:submit").prop('disabled', !isValid);
+
+	if ((hasCoupon)&&(isValid)) {
+		$('div[id="' + currentRow + '[product_sum]"]').html((typedQty * price).toFixed(2));
+	} else {
+		if (isValid) {
+			updateProductRow(currentRow, discountType, price, typedDiscount, typedQty);
+		}
+	}
+	updateOrderProducts();
+}
+
+function validateRows() {
+	var isValid = false;
+	var rows = $('#items').find("tr");
+	rows.each( function(index) {
+		var discount = $('input[id="row_' + (index+1) + '[discount]"]').val();
+		var qty = $('input[id="row_' + (index+1) + '[qty]"]').val();
+		var price = $('input[id="row_' + (index+1) + '[discount]"]').attr('data-price');
+		var discountType = $('select[id="row_' + (index+1) + '[select_type]"]').val();
+		var isValidQty = (qty == parseInt(qty));
+		var isValidDiscount = validateDiscountValue(parseFloat(price), discountType, discount);
+		isValid = isValidQty && isValidDiscount;
+		if (!isValid) {
+			return false;
+		}
+	});
+	return isValid;
+}
+
+function validateDiscountValue(price, type, value) {
+	if ((value == undefined)&&(type == undefined)) {
+		return true;
+	} else {
+		if (isNaN(value)) {
+			return false;
+		}
+	}
+
+	if (type == 'percent') {
+
+		if ((parseFloat(value) >= 100) || (parseFloat(value) < 0)) {
+			return false;
+		}
+	}
+	if (type == 'unit') {
+		if ((parseFloat(value) >= price) || (parseFloat(value) < 0)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+function updateProductRow(currentRow, discountType, price, discountValue, qty) {
+	$('input[id="' + currentRow + '[qty]"]').val(qty);
+	var discountTypeSymbol = "";
+	var discountValuePattern = '\\d+(\\.|\\,)?\\d*';
+	var discountNumber = parseFloat($('input[id="' + currentRow + '[discount]"]').val()).toFixed(2);
+	var discountTotal = discountValue;
+
+	if (discountType == 'unit') {
+		// defaults apply
+	}
+
+	if (discountType == 'percent') {
+		discountTypeSymbol = " %";
+		discountValuePattern = '^[0-9]+$';
+		discountNumber = parseInt($('input[id="' + currentRow + '[discount]"]').val());
+		discountTotal = price * parseInt(discountValue) / 100;
+	}
+
+	$('i[id="' + currentRow + '[discount_i]"]').html(discountTypeSymbol);
+	$('input[id="' + currentRow + '[discount]"]').attr({'pattern' : discountValuePattern});
+	$('input[id="' + currentRow + '[discount]"]').val(discountNumber);
+
+	$('div[id="' + currentRow + '[discount_sum_text]"]').html( parseFloat(discountTotal).toFixed(2) );
+	$('input[id="' + currentRow + '[discount_sum]"]').val(discountTotal);
+	$('div[id="' + currentRow + '[product_price]"]').html((price - discountTotal).toFixed(2));
+	$('div[id="' + currentRow + '[product_sum]"]').html((qty*(price - discountTotal)).toFixed(2));
+
+}
+
+function updateOrderProducts() {
+	var costProducts = 0;
+	var rows = $('#items').find("tr");
+
+	rows.each(function(index) {
+		var thisProductsSumElem = $('div[name="products[' + (index+1) + '][product_sum]"]');
+		var thisProductsSum = parseFloat(thisProductsSumElem.html());
+		costProducts = costProducts + thisProductsSum;
+	});
+
+	var newValue = costProducts.toFixed(2);
+	$('#cost_products').val(newValue);
+	$('#cost_products_val').html(newValue);
+}
+
+function delItem(id) {
+	$('#'+id).remove();
+}
+
+function editProduct(prefix) {
+	id =  $('#'+prefix+'_product').val();
+	if(!id || id == undefined) {
+		alert('Не найден ID товара!');
+		return;
+	} 
+
+	//dialogProduct(undefined, false, id);
+	dialogCreateProduct(id, prefix);
+	
+}
+
+function dialogCreateProduct(pid, name) { 
+    var url = '{$GB->conf['url']['admin']}/products/view/order-modify/';
+    
+    var width = 985;
+    var height = 700;
+    
+    url += '?id='+escape(pid);
+    
+    if(name == undefined) {
+        name = pid;
+    }
+    
+    name = name.replace('-', '_');
+    
+    openWin(url, name, width, height);
+} 
+
+//function setNewProductId(prefix, id)
+//{
+//	$('#'+prefix+'_product').val(id);
+//}
+
+function statusValidate() {
+	var isSelectedNull = ($('#i-statuses select#new_status :selected').val() == 'null');
+	var notesIsEmpty = !($('#i-statuses input[name="notes"]').val());
+	var isSelectedReasonEmpty = !($('select[name=status_reason]').val());
+
+	if (isSelectedNull  && notesIsEmpty && isSelectedReasonEmpty) {
+		alert('Заполните поле "Примечания".');
+		return false;
+	}
+	return true;
+}
+
+// status reason visibility
+function reasonBuild(selectedStatus ){
+	var showReasonsBlock= false;
+	var reasonsBlock = $('tr.reason');
+	$('select[name=status_reason]').each(function(){
+		if($(this).data('status') == selectedStatus ) {
+			showReasonsBlock= true;
+			$(this).removeAttr('disabled').show();
+		} else {
+			$(this).attr('disabled', '').hide();
+		}
+	});
+	reasonsBlock.toggle(showReasonsBlock);
+}
+
+function getRussiaPostForms() {
+    var url = '{$GB->conf['url']['admin']}/orders/getRussiaPostForms/';
+    var name = 'getRussiaPostForms';   
+    url += '?id='+{$O['id']};
+    openWin(url,name,1,1);
+}
+// toggle oupons-list button
+    $("#toggle-coupons-list" ).toggle(function() {
+      $("#toggle-coupons-list").val("Скрыть"); 
+      $(".coupons-list").slideDown();
+    }, function() {
+      $("#toggle-coupons-list").val("Показать"); 
+      $(".coupons-list").slideUp();
+    });
+    // toggle flag history
+    $("#flag-history-btn" ).toggle(function() {
+      $("#flag-history-btn").val("Скрыть Историю"); 
+      $(".flag-history").slideDown();
+    }, function() {
+      $("#flag-history-btn").val("История"); 
+      $(".flag-history").slideUp();
+    });
+//]]>
+</script>

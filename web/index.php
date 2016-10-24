@@ -9,17 +9,12 @@ $app->register(new Silex\Provider\TwigServiceProvider(), array(
 ));
 
 $app->get('/', function () use ($app) {
- $time = date("F j, Y, g:i a");
- $templateVars = array(
+    $time = date("F j, Y, g:i a");
+    $templateVars = array(
        'msg' => 'Task 2 from Anthony',
        'time' => $time,
-      
-    );    
-
-
-return $app['twig']->render('layout.twig', $templateVars);
+    );
+    return $app['twig']->render('layout.twig', $templateVars);
 });
 
-
 $app->run();
-
